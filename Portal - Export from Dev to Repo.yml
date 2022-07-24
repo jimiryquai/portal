@@ -1,0 +1,49 @@
+# 'Allow scripts to access the OAuth token' was selected in pipeline.  Add the following YAML to any steps requiring access:
+#       env:
+#           MY_ACCESS_TOKEN: $(System.AccessToken)
+# Variable Group 'Dev' was defined in the Variables tab
+# Variable Group 'Common' was defined in the Variables tab
+jobs:
+- job: Job_1
+  displayName: Export Job
+  pool:
+    vmImage: vs2017-win2016
+  steps:
+  - checkout: self
+    persistCredentials: True
+  - task: PowerShell@2
+    displayName: Install PowerApps CLI
+    inputs:
+      filePath: $(PortalToolsPath)\ps\install_cli.ps1
+      arguments: -msiPath $(PortalToolsPath)\msi\powerapps-cli-1.0.msi -logFolderPath $(PortalToolsPath)\ps\ -installPath $(PortalToolsPath)\cli\
+  - task: PowerShell@2
+    displayName: Download Portal Config
+    inputs:
+      filePath: $(PortalToolsPath)\ps\download_portal.ps1
+      arguments: -envurl $(CdsUrl) -tenantId $(TenantId) -clientId $(ClientId) -clientSecret $(ClientSecret) -exportPath "$(PortalConfigExportPath)" -websiteId $(RecruitmentPortalId) -installPath $(PortalToolsPath)\cli\
+      script: "#Update \n$env:Path += \";$(Build.SourcesDirectory)\"\n\n#Output PATH System Env Variable\n$Env:Path\n\n#Connect to Dataverse\npac auth create -u https://pfc-dev.crm11.dynamics.com -t 6e455a0e-bdd6-4f8e-9863-6d771ca5d078 -id $(ClientId) -cs $(ClientSecret)\n\n#Confirm Connection\npac auth list\n\n#Download Config\npac paportal download --path \"$(Build.SourcesDirectory)\\recruitment-portal\\Portal Solution\\export_test\\\" --webSiteId d78574f9-20c3-4dcc-8d8d-85cf5b7ac141"
+  - task: CmdLine@2
+    displayName: Commit code to Repo
+    inputs:
+      script: >
+        echo commit all changes
+
+        git config user.email "s-dynamics365@transforming.group"
+
+        git config user.name "Automatic Build"
+
+        git checkout main
+
+        git add --all
+
+        git commit -m "Automatic Export Pipeline"
+
+        echo push code to new repo
+
+        git -c http.extraheader="AUTHORIZATION: bearer $(System.AccessToken)" push origin main
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: PowerShell logs'
+    inputs:
+      PathtoPublish: $(PortalToolsPath)\ps\
+      ArtifactName: PSLogs
+...

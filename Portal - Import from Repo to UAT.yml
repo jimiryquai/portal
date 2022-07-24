@@ -1,0 +1,31 @@
+# Variable Group 'UAT' was defined in the Variables tab
+# Variable Group 'Common' was defined in the Variables tab
+jobs:
+- job: Job_1
+  displayName: Import Job
+  pool:
+    vmImage: vs2017-win2016
+  steps:
+  - checkout: self
+    clean: true
+  - task: PowerShell@2
+    displayName: Install PowerApps CLI
+    inputs:
+      filePath: $(PortalToolsPath)\ps\install_cli.ps1
+      arguments: -msiPath $(PortalToolsPath)\msi\powerapps-cli-1.0.msi -logFolderPath $(PortalToolsPath)\ps\ -installPath $(PortalToolsPath)\cli\
+  - task: PowerShell@2
+    displayName: Upload Portal Config
+    inputs:
+      filePath: $(PortalToolsPath)\ps\upload_portal.ps1
+      arguments: -envurl $(CdsUrl) -tenantId $(TenantId) -clientId $(ClientId) -clientSecret $(ClientSecret) -exportPath "$(PortalConfigExportPath)recruitment-portal\" -installPath $(PortalToolsPath)\cli\
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: Tooling'
+    inputs:
+      PathtoPublish: $(PortalToolsPath)\
+      ArtifactName: tools
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Artifact: Portal Config'
+    inputs:
+      PathtoPublish: $(PortalConfigExportPath)
+      ArtifactName: PortalConfig
+...
